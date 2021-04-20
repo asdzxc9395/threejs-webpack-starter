@@ -12,10 +12,18 @@ uniform vec2 u_resolution;
 // translation to add to position
 uniform vec2 u_translation;
 
+uniform vec2 u_rotation;
+
 // all shaders have a main function
 void main() {
+  // 위치 회전
+  vec2 rotatedPosition = vec2(
+  a_position.x * u_rotation.y + a_position.y * u_rotation.x,
+  a_position.y * u_rotation.y - a_position.x * u_rotation.x);
+  
   // Add in the translation
-  vec2 position = a_position + u_translation;
+  vec2 position = rotatedPosition + u_translation;
+
 
   // convert the position from pixels to 0.0 to 1.0
   vec2 zeroToOne = position / u_resolution;
@@ -64,6 +72,7 @@ function main() {
   var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
   var colorLocation = gl.getUniformLocation(program, "u_color");
   var translationLocation = gl.getUniformLocation(program, "u_translation");
+  var rotationLocation = gl.getUniformLocation(program, "u_rotation");
 
   // Create a buffer
   var positionBuffer = gl.createBuffer();
@@ -93,7 +102,8 @@ function main() {
 
   // First let's make some variables
   // to hold the translation,
-  var translation = [0, 0];
+  var translation = [150, 100];
+  var rotation = [0, 1];
   var color = [Math.random(), Math.random(), Math.random(), 1];
 
   drawScene();
@@ -101,6 +111,17 @@ function main() {
   // Setup a ui.
   webglLessonsUI.setupSlider("#x", {slide: updatePosition(0), max: gl.canvas.width });
   webglLessonsUI.setupSlider("#y", {slide: updatePosition(1), max: gl.canvas.height});
+
+  $("#rotation").gmanUnitCircle({
+    width: 200,
+    height: 200,
+    value: 0,
+    slide: function(e, u) {
+      rotation[0] = u.x;
+      rotation[1] = u.y;
+      drawScene();
+    },
+  });
 
   function updatePosition(index) {
     return function(event, ui) {
@@ -135,6 +156,9 @@ function main() {
 
     // Set the translation.
     gl.uniform2fv(translationLocation, translation);
+
+    // Set the rotation.
+    gl.uniform2fv(rotationLocation, rotation);
 
     // Draw the geometry.
     var primitiveType = gl.TRIANGLES;

@@ -9,11 +9,24 @@ in vec2 a_position;
 // Used to pass in the resolution of the canvas
 uniform vec2 u_resolution;
 
+// translation to add to position
+uniform vec2 u_translation;
+
+// rotation values
+uniform vec2 u_rotation;
+
 // all shaders have a main function
 void main() {
+  // Rotate the position
+  vec2 rotatedPosition = vec2(
+     a_position.x * u_rotation.y + a_position.y * u_rotation.x,
+     a_position.y * u_rotation.y - a_position.x * u_rotation.x);
+
+  // Add in the translation
+  vec2 position = rotatedPosition + u_translation;
 
   // convert the position from pixels to 0.0 to 1.0
-  vec2 zeroToOne = a_position / u_resolution;
+  vec2 zeroToOne = position / u_resolution;
 
   // convert from 0->1 to 0->2
   vec2 zeroToTwo = zeroToOne * 2.0;
@@ -58,6 +71,8 @@ function main() {
   // look up uniform locations
   var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
   var colorLocation = gl.getUniformLocation(program, "u_color");
+  var translationLocation = gl.getUniformLocation(program, "u_translation");
+  var rotationLocation = gl.getUniformLocation(program, "u_rotation");
 
   // Create a buffer
   var positionBuffer = gl.createBuffer();
@@ -73,6 +88,8 @@ function main() {
 
   // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  // Set Geometry.
+  setGeometry(gl);
 
   // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
   var size = 2;          // 2 components per iteration
@@ -83,20 +100,28 @@ function main() {
   gl.vertexAttribPointer(
       positionAttributeLocation, size, type, normalize, stride, offset);
 
-
-
   // First let's make some variables
-  // to hold the translation, width and height of the rectangle
-  var translation = [0, 0];
-  var width = 100;
-  var height = 30;
+  // to hold the translation,
+  var translation = [150, 100];
+  var rotation = [0, 1];
   var color = [Math.random(), Math.random(), Math.random(), 1];
 
   drawScene();
 
   // Setup a ui.
-  webglLessonsUI.setupSlider("#x", {slide: updatePosition(0), max: gl.canvas.width });
-  webglLessonsUI.setupSlider("#y", {slide: updatePosition(1), max: gl.canvas.height});
+  webglLessonsUI.setupSlider("#x", {value: translation[0], slide: updatePosition(0), max: gl.canvas.width });
+  webglLessonsUI.setupSlider("#y", {value: translation[1], slide: updatePosition(1), max: gl.canvas.height});
+
+  $("#rotation").gmanUnitCircle({
+    width: 200,
+    height: 200,
+    value: 0,
+    slide: function(e, u) {
+      rotation[0] = u.x;
+      rotation[1] = u.y;
+      drawScene();
+    },
+  });
 
   function updatePosition(index) {
     return function(event, ui) {
@@ -105,6 +130,7 @@ function main() {
     };
   }
 
+  // Draw the scene.
   function drawScene() {
     webglUtils.resizeCanvasToDisplaySize(gl.canvas);
 
@@ -125,35 +151,56 @@ function main() {
     // pixels to clipspace in the shader
     gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
 
-    // Update the position buffer with rectangle positions
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    setRectangle(gl, translation[0], translation[1], width, height);
-
-    // Set a random color.
+    // Set the color.
     gl.uniform4fv(colorLocation, color);
 
-    // Draw the rectangle.
+    // Set the translation.
+    gl.uniform2fv(translationLocation, translation);
+
+    // Set the rotation.
+    gl.uniform2fv(rotationLocation, rotation);
+
+    // Draw the geometry.
     var primitiveType = gl.TRIANGLES;
     var offset = 0;
-    var count = 6;
+    var count = 18;
     gl.drawArrays(primitiveType, offset, count);
   }
 }
 
-// Fill the buffer with the values that define a rectangle.
-function setRectangle(gl, x, y, width, height) {
-  var x1 = x;
-  var x2 = x + width;
-  var y1 = y;
-  var y2 = y + height;
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-     x1, y1,
-     x2, y1,
-     x1, y2,
-     x1, y2,
-     x2, y1,
-     x2, y2,
-  ]), gl.STATIC_DRAW);
+// Fill the current ARRAY_BUFFER buffer
+// with the values that define a letter 'F'.
+function setGeometry(gl) {
+  gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([
+          // left column
+          0, 0,
+          30, 0,
+          0, 150,
+          0, 150,
+          30, 0,
+          30, 150,
+
+          // top rung
+          30, 0,
+          100, 0,
+          30, 30,
+          30, 30,
+          100, 0,
+          100, 30,
+
+          // middle rung
+          30, 60,
+          67, 60,
+          30, 90,
+          30, 90,
+          67, 60,
+          67, 90,
+      ]),
+      gl.STATIC_DRAW);
 }
 
-main();
+$(function(){
+  main();
+});
